@@ -1,0 +1,51 @@
+import networkx as nx
+import numpy as np
+
+# Матрица расстояний (пример для 5 городов)
+distance_matrix = np.array([
+    [0, 10, 15, 20, 25],
+    [10, 0, 35, 25, 30],
+    [15, 35, 0, 30, 35],
+    [20, 25, 30, 0, 40],
+    [25, 30, 35, 40, 0]
+])
+
+# Создание полного взвешенного графа
+graph = nx.from_numpy_array(distance_matrix)
+
+# Минимальное остовное дерево
+mst = nx.minimum_spanning_tree(graph)
+
+# Дублирование рёбер
+multi_graph = nx.MultiGraph()
+for u, v, data in mst.edges(data=True):
+    multi_graph.add_edge(u, v, weight=data['weight'])
+    multi_graph.add_edge(v, u, weight=data['weight'])
+
+# Эйлеров обход
+euler_path = list(nx.eulerian_circuit(multi_graph))
+
+# Преобразование в гамильтонов цикл
+tour = []
+visited = set()
+for edge in euler_path:
+    if edge[0] not in visited:
+        tour.append(edge[0])
+        visited.add(edge[0])
+if len(tour) > 1 and tour[-1] != tour[0]:
+    tour.append(tour[0])
+
+# Общая длина маршрута
+total_cost = sum([distance_matrix[tour[i], tour[(i+1)%len(tour)]] for i in range(len(tour))])
+
+# Оценка нижней границы
+lower_bound = sum(sorted(distances)[1] for distances in distance_matrix)
+
+# Расчет соотношения
+ratio = total_cost / lower_bound
+
+# Печать результатов
+print("Маршрут тура:", tour)
+print(f"Суммарная длина маршрута: {total_cost}")
+print(f"Оценочная нижняя граница: {lower_bound}")
+print(f"Соотношение к нижней границе: {ratio:.2f}")
