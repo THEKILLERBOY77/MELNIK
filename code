@@ -1,51 +1,57 @@
 import networkx as nx
-import numpy as np
+from itertools import combinations
 
-# Матрица расстояний (пример для 5 городов)
-distance_matrix = np.array([
+
+def tsp_approx(matrix):
+    # Шаг 1: Минимальное остовное дерево
+    graph = nx.Graph()
+    n = len(matrix)
+    
+    for i in range(n):
+        for j in range(i+1, n):
+            weight = matrix[i][j]
+            if weight > 0:
+                graph.add_edge(i, j, weight=weight)
+                
+    mst_edges = list(nx.minimum_spanning_tree(graph).edges(data=True))
+    
+    # Шаг 2: Дублируем рёбра MST
+    duplicated_graph = nx.MultiGraph()
+    for u, v, data in mst_edges:
+        duplicated_graph.add_edge(u, v, weight=data['weight'])
+        duplicated_graph.add_edge(v, u, weight=data['weight'])  # дублирование каждого ребра
+        
+    # Шаг 3: Нахождение Эйлерова цикла
+    eulerian_cycle = list(nx.eulerian_circuit(duplicated_graph))  # возвращает список пар узлов
+    
+    # Шаг 4: Преобразуем Эйлеров цикл в Гамильтонов путь (убираем повторы)
+    visited = set()
+    path = []
+    current_vertex = None
+    
+    for edge in eulerian_cycle:
+        vertex = edge[0]
+        if vertex not in visited:
+            path.append(vertex)
+            visited.add(vertex)
+            
+    path.append(eulerian_cycle[-1][1])  # добавляем последнюю вершину цикла
+    
+    # Шаг 5: Подсчет длины маршрута
+    total_cost = sum([matrix[path[i]][path[(i+1)%len(path)]] for i in range(len(path)-1)])
+    
+    return path, total_cost
+
+
+# Тестируем алгоритм на примере матрицы 5х5
+distances_matrix = [
     [0, 10, 15, 20, 25],
     [10, 0, 35, 25, 30],
     [15, 35, 0, 30, 35],
     [20, 25, 30, 0, 40],
     [25, 30, 35, 40, 0]
-])
+]
 
-# Создание полного взвешенного графа
-graph = nx.from_numpy_array(distance_matrix)
-
-# Минимальное остовное дерево
-mst = nx.minimum_spanning_tree(graph)
-
-# Дублирование рёбер
-multi_graph = nx.MultiGraph()
-for u, v, data in mst.edges(data=True):
-    multi_graph.add_edge(u, v, weight=data['weight'])
-    multi_graph.add_edge(v, u, weight=data['weight'])
-
-# Эйлеров обход
-euler_path = list(nx.eulerian_circuit(multi_graph))
-
-# Преобразование в гамильтонов цикл
-tour = []
-visited = set()
-for edge in euler_path:
-    if edge[0] not in visited:
-        tour.append(edge[0])
-        visited.add(edge[0])
-if len(tour) > 1 and tour[-1] != tour[0]:
-    tour.append(tour[0])
-
-# Общая длина маршрута
-total_cost = sum([distance_matrix[tour[i], tour[(i+1)%len(tour)]] for i in range(len(tour))])
-
-# Оценка нижней границы
-lower_bound = sum(sorted(distances)[1] for distances in distance_matrix)
-
-# Расчет соотношения
-ratio = total_cost / lower_bound
-
-# Печать результатов
-print("Маршрут тура:", tour)
-print(f"Суммарная длина маршрута: {total_cost}")
-print(f"Оценочная нижняя граница: {lower_bound}")
-print(f"Соотношение к нижней границе: {ratio:.2f}")
+route, cost = tsp_approx(distances_matrix)
+print("Маршрут:", route)
+print("Стоимость маршрута:", cost)
